@@ -5,6 +5,51 @@ from PIL import Image
 from matplotlib.path import Path
 
 
+def binarize_rgb_image(image, threshold=128):
+    """
+    对 RGB 图像进行二值化处理，输出结果也是 RGB 图像。
+
+    参数:
+        image (np.ndarray): 输入的 RGB 图像，形状为 (H, W, 3)。
+        threshold (int): 二值化的阈值，默认值为 128。
+
+    返回:
+        np.ndarray: 二值化后的 RGB 图像，形状为 (H, W, 3)。
+    """
+    # 将 RGB 图像转换为灰度图像
+    gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    # 创建二值化掩码
+    _, binary_mask = cv2.threshold(gray_image, threshold, 255, cv2.THRESH_BINARY)
+
+    # 将掩码扩展为三通道，直接应用于 RGB 图像
+    binary_rgb_image = cv2.merge([binary_mask, binary_mask, binary_mask])
+
+    return binary_rgb_image
+
+
+# # 示例
+# # 创建一个简单的 RGB 图像
+# rgb_image = np.zeros((10, 10, 3), dtype=np.uint8)
+# rgb_image[2:8, 2:8] = [100, 150, 200]  # 中间部分为颜色值 (100, 150, 200)
+
+# # 对图像进行二值化
+# binary_rgb_image = binarize_rgb_image(rgb_image, threshold=128)
+
+# # 显示原始图像和二值化后的图像
+# plt.subplot(1, 2, 1)
+# plt.imshow(rgb_image)
+# plt.title("Original RGB Image")
+# plt.axis("off")
+
+# plt.subplot(1, 2, 2)
+# plt.imshow(binary_rgb_image)
+# plt.title("Binarized RGB Image")
+# plt.axis("off")
+
+# plt.show()
+
+
 def increment_polygon_area(matrix, points):
     """
     对一个矩阵中由 points 定义的多边形区域的值加 1。
@@ -326,10 +371,13 @@ if __name__ == "__main__":
             mask = increment_polygon_area(mask,points)
             # 在变换图截取区域内+1
             mask = increment_polygon_area(mask,points_temp)
+
+
             # 非公共区域为0，公共区域为255
             mask[mask != 2] = 0
             mask[mask ==2]=255
             mask_rgb = np.stack([mask] * 3, axis=-1)
+
 
             # # 可视化
             # dir_visual = 'data/visual'
@@ -342,11 +390,15 @@ if __name__ == "__main__":
 
             # mask_原图区域
             mask_raw = crop_by_points(mask_rgb,points,1920,1080)
+            # 二值化，因为变换后边缘会模糊
+            mask_raw = binarize_rgb_image(mask_raw)
             # mask_变换图区域
             mask_transform = crop_by_points(mask_rgb,points_temp,1920, 1080)
-
+            # 二值化，因为变换后边缘会模糊
+            mask_transform = binarize_rgb_image(mask_transform)
             # 生成变换图
             cropped_image = crop_by_points(image,points_temp,1920, 1080)
+            
             
 
             # 保存原图
