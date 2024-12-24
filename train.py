@@ -50,7 +50,10 @@ def train_model(
     train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     # 3. Create data loaders
-    loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
+    # loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
+    # aibo
+    loader_args = dict(batch_size=batch_size, num_workers=16, pin_memory=True)
+
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
@@ -97,8 +100,19 @@ def train_model(
                 images = images.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
                 true_masks = true_masks.to(device=device, dtype=torch.long)
 
+                # aibo，查看维度
+                # print("images.shape:")
+                # print(images.shape)
+                # print("true_masks.shape:")
+                # print(true_masks.shape)
+
                 with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
                     masks_pred = model(images)
+
+                    # aibo，查看维度
+                    # print("masks.shape:")
+                    # print(masks_pred.shape)
+
                     if model.n_classes == 1:
                         loss = criterion(masks_pred.squeeze(1), true_masks.float())
                         loss += dice_loss(F.sigmoid(masks_pred.squeeze(1)), true_masks.float(), multiclass=False)
