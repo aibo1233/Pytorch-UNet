@@ -1,7 +1,7 @@
 """ Full assembly of the parts to form the complete network """
 
 from .unet_parts import *
-
+from .cbam import CBAM
 
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False):
@@ -10,12 +10,28 @@ class UNet(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = (DoubleConv(n_channels, 64))
-        self.down1 = (Down(64, 128))
-        self.down2 = (Down(128, 256))
-        self.down3 = (Down(256, 512))
+        self.inc = nn.Sequential(
+            DoubleConv(n_channels, 64),
+            CBAM(64)  # 添加 CBAM 模块
+        )
+        self.down1 = nn.Sequential(
+            Down(64, 128),
+            CBAM(128)  # 添加 CBAM 模块
+        )
+        self.down2 = nn.Sequential(
+            Down(128, 256),
+            CBAM(256)  # 添加 CBAM 模块
+        )
+        self.down3 = nn.Sequential(
+            Down(256, 512),
+            CBAM(512)  # 添加 CBAM 模块
+        )
         factor = 2 if bilinear else 1
-        self.down4 = (Down(512, 1024 // factor))
+        self.down4 = nn.Sequential(
+            Down(512, 1024 // factor),
+            CBAM(1024 // factor)  # 添加 CBAM 模块
+        )
+
         self.up1 = (Up(1024, 512 // factor, bilinear))
         self.up2 = (Up(512, 256 // factor, bilinear))
         self.up3 = (Up(256, 128 // factor, bilinear))
