@@ -14,14 +14,18 @@ def evaluate(net, dataloader, device, amp):
     # iterate over the validation set
     with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
         for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
-            image, mask_true = batch['image'], batch['mask']
+            image, mask_true, image_trans, mask_true_trans = batch['image'], batch['mask'],batch['image_trans'], batch['mask_trans']
 
             # move images and labels to correct device and type
-            image = image.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+            # image = image.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+            image_merge= torch.cat((image, image_trans), dim=1)
+            image_merge = image_merge.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+
             mask_true = mask_true.to(device=device, dtype=torch.long)
+            mask_true_trans = mask_true_trans.to(device=device, dtype=torch.long)
 
             # predict the mask
-            mask_pred = net(image)
+            mask_pred = net(image_merge)
 
             if net.n_classes == 1:
                 assert mask_true.min() >= 0 and mask_true.max() <= 1, 'True mask indices should be in [0, 1]'
@@ -31,10 +35,19 @@ def evaluate(net, dataloader, device, amp):
             else:
                 assert mask_true.min() >= 0 and mask_true.max() < net.n_classes, 'True mask indices should be in [0, n_classes['
                 # convert to one-hot format
-                mask_true = F.one_hot(mask_true, net.n_classes).permute(0, 3, 1, 2).float()
-                mask_pred = F.one_hot(mask_pred.argmax(dim=1), net.n_classes).permute(0, 3, 1, 2).float()
+                # mask_true = F.one_hot(mask_true, net.n_classes).permute(0, 3, 1, 2).float()
+                # mask_pred = F.one_hot(mask_pred.argmax(dim=1), net.n_classes).permute(0, 3, 1, 2).float()
+                mask_true = F.one_hot(mask_true, 2).permute(0, 3, 1, 2).float()
+                mask_true_trans = F.one_hot(mask_true_trans, 2).permute(0, 3, 1, 2).float()
+
+                mask_pred_raw = mask_pred[:, 0:2, :, :]  # 第一个通道
+                mask_pred_trans = mask_pred[:, 2:4, :, :]  # 第二个通道
+                mask_pred_raw = F.one_hot(mask_pred_raw.argmax(dim=1), 2).permute(0, 3, 1, 2).float()
+                mask_pred_trans = F.one_hot(mask_pred_trans.argmax(dim=1), 2).permute(0, 3, 1, 2).float()
+
                 # compute the Dice score, ignoring background
-                dice_score += multiclass_dice_coeff(mask_pred[:, 1:], mask_true[:, 1:], reduce_batch_first=False)
+                dice_score += multiclass_dice_coeff(mask_pred_raw[:, 1:], mask_true[:, 1:], reduce_batch_first=False)
+                dice_score += multiclass_dice_coeff(mask_pred_trans[:, 1:], mask_true_trans[:, 1:], reduce_batch_first=False)
 
     net.train()
-    return dice_score / max(num_val_batches, 1)
+    return dice_score / (max(num_val_batches, 1)*2)

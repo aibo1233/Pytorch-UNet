@@ -19,8 +19,12 @@ from unet import UNet
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
+# 原图及其公共区域mask的路径
 dir_img = Path('./data/imgs/')
 dir_mask = Path('./data/masks/')
+# 变换图及其公共区域mask的路径
+dir_img_trans = Path('./data/imgs_transform/')
+dir_mask_trans = Path('./data/masks_transform/')
 dir_checkpoint = Path('./checkpoints/')
 
 
@@ -40,9 +44,9 @@ def train_model(
 ):
     # 1. Create dataset
     try:
-        dataset = CarvanaDataset(dir_img, dir_mask, img_scale)
+        dataset = CarvanaDataset(dir_img, dir_mask,dir_img_trans,dir_mask_trans, img_scale)
     except (AssertionError, RuntimeError, IndexError):
-        dataset = BasicDataset(dir_img, dir_mask, img_scale)
+        dataset = BasicDataset(dir_img, dir_mask,dir_img_trans,dir_mask_trans, img_scale)
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -90,15 +94,27 @@ def train_model(
         epoch_loss = 0
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit='img') as pbar:
             for batch in train_loader:
-                images, true_masks = batch['image'], batch['mask']
+                images, true_masks,images_trans, true_masks_trans = batch['image'], batch['mask'],batch['image_trans'], batch['mask_trans']
+                
+                # 对图像合并通道
+                images_merge= torch.cat((images, images_trans), dim=1)
 
-                assert images.shape[1] == model.n_channels, \
+                assert images_merge.shape[1] == model.n_channels, \
                     f'Network has been defined with {model.n_channels} input channels, ' \
                     f'but loaded images have {images.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
 
-                images = images.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+
+
+                # images = images.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+                # images_trans = images_trans.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+                images_merge = images_merge.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+
                 true_masks = true_masks.to(device=device, dtype=torch.long)
+                true_masks_trans = true_masks_trans.to(device=device, dtype=torch.long)
+
+
+                
 
                 # aibo，查看维度
                 # print("images.shape:")
@@ -106,8 +122,9 @@ def train_model(
                 # print("true_masks.shape:")
                 # print(true_masks.shape)
 
-                with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
-                    masks_pred = model(images)
+                with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):                    
+                    # masks_pred = model(images)
+                    masks_pred = model(images_merge)
 
                     # aibo，查看维度
                     # print("masks.shape:")
@@ -117,10 +134,22 @@ def train_model(
                         loss = criterion(masks_pred.squeeze(1), true_masks.float())
                         loss += dice_loss(F.sigmoid(masks_pred.squeeze(1)), true_masks.float(), multiclass=False)
                     else:
-                        loss = criterion(masks_pred, true_masks)
+                        mask_pred_raw = masks_pred[:, 0:2, :, :]  # 第一个通道
+                        mask_pred_trans = masks_pred[:, 2:4, :, :]  # 第二个通道
+
+                        loss = criterion(mask_pred_raw, true_masks)
                         loss += dice_loss(
-                            F.softmax(masks_pred, dim=1).float(),
-                            F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
+                            F.softmax(mask_pred_raw, dim=1).float(),
+                            # F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
+                            F.one_hot(true_masks, 2).permute(0, 3, 1, 2).float(),
+                            multiclass=True
+                        )
+                        # 为变换图计算同样的loss
+                        loss += criterion(mask_pred_trans, true_masks_trans)
+                        loss += dice_loss(
+                            F.softmax(mask_pred_trans, dim=1).float(),
+                            # F.one_hot(true_masks_trans, model.n_classes).permute(0, 3, 1, 2).float(),
+                            F.one_hot(true_masks_trans, 2).permute(0, 3, 1, 2).float(),
                             multiclass=True
                         )
 
@@ -142,6 +171,7 @@ def train_model(
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
                 # Evaluation round
+                # continue
                 division_step = (n_train // (5 * batch_size))
                 if division_step > 0:
                     if global_step % division_step == 0:
@@ -193,7 +223,7 @@ def get_args():
                         help='Percent of the data that is used as validation (0-100)')
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
-    parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--classes', '-c', type=int, default=4, help='Number of classes')
 
     return parser.parse_args()
 
@@ -208,7 +238,7 @@ if __name__ == '__main__':
     # Change here to adapt to your data
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
-    model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    model = UNet(n_channels=6, n_classes=args.classes, bilinear=args.bilinear)
     model = model.to(memory_format=torch.channels_last)
 
     logging.info(f'Network:\n'
