@@ -3,6 +3,7 @@ import numpy as np
 import os
 from PIL import Image
 from matplotlib.path import Path
+import random
 
 
 def binarize_rgb_image(image, threshold=128):
@@ -146,9 +147,9 @@ def crop_by_points(image, points, crop_width, crop_height):
     ], dtype="float32")
 
     # 计算仿射变换矩阵
-    print(type(points[0][0]))
-    print(points)
-    print(type(dst_points[0][0]))
+    # print(type(points[0][0]))
+    # print(points)
+    # print(type(dst_points[0][0]))
     matrix = cv2.getPerspectiveTransform(points, dst_points)
 
     # 进行透视变换
@@ -287,11 +288,11 @@ def save_image_with_info(image, info, folder_path):
     # 保存图像
     # image.save(file_path)
     cv2.imwrite(file_path,image)
-    print(f"Image saved to: {file_path}")
+    # print(f"Image saved to: {file_path}")
 
 
 
-def crop_center_with_points(image, crop_width, crop_height):
+def get_points_of_crop_center(image_h,image_w, crop_width, crop_height):
     """
     从图像中心裁剪指定尺寸的区域，并返回裁剪区域的四个角点坐标。
     
@@ -301,7 +302,8 @@ def crop_center_with_points(image, crop_width, crop_height):
     :return: 裁剪后的图像和四个角点坐标
     """
     # 获取图像尺寸
-    h, w = image.shape[:2]
+    # h, w = image.shape[:2]
+    h, w = image_h,image_w
     
     # 计算中心点
     center_x, center_y = w // 2, h // 2
@@ -313,7 +315,7 @@ def crop_center_with_points(image, crop_width, crop_height):
     y_end = center_y + crop_height // 2
     
     # 裁剪图像
-    cropped_image = image[y_start:y_end, x_start:x_end]
+    # cropped_image = image[y_start:y_end, x_start:x_end]
     
     # 计算四个角点的坐标
     points = [
@@ -323,7 +325,7 @@ def crop_center_with_points(image, crop_width, crop_height):
         (x_start, y_end)     # 左下角
     ]
     
-    return cropped_image, points
+    return points
 
 
 
@@ -342,71 +344,84 @@ if __name__ == "__main__":
 
     
     # 创建一个示例大图像 (4000x4000)
-    raw_image_dir = 'raw_img/'
+    # raw_image_dir = '../AerialImageDataset/train/images'
+    raw_image_dir = 'raw_img'
+    image_h,image_w = 3000,3000
+    # 裁剪中心的 1920x1080 区域
+    points = get_points_of_crop_center(image_h,image_w, 1920, 1080)
+    
+
+    # 对四个点进行变换
+    transformed_results = transform_points_with_metadata(points, image_w, image_h)
+    # print(transformed_results)
+
+
+    # raw_image_dir = 'raw_img'
     for pic in os.listdir(raw_image_dir):
+        print(pic)
         pic_path = os.path.join(raw_image_dir,pic)
         image = cv2.imread(pic_path)
         # image = cv2.imread("wallhaven-5gjwo1_3000.jpg")
         # 获取图像尺寸
         img_height, img_width = image.shape[:2]
 
-        # 裁剪中心的 1920x1080 区域
-        cropped, points = crop_center_with_points(image, 1920, 1080)
-        
 
-        # 对四个点进行变换
-        transformed_results = transform_points_with_metadata(points, img_width, img_height)
-        # print(transformed_results)
 
         # 截取图像
-        for item in transformed_results:
-            print(item)
-            points_temp = item['points']
-            item['raw_img_name'] = pic.split('.')[0]
+        # for item in transformed_results:
+        item = random.choice(transformed_results)   #随机选取一种变换
 
 
-            # 生成mask
-            mask = np.zeros((img_height, img_width), dtype=np.uint8)
-            # 在原图截取区域内+1
-            mask = increment_polygon_area(mask,points)
-            # 在变换图截取区域内+1
-            mask = increment_polygon_area(mask,points_temp)
+
+        # print(item)
+        points_temp = item['points']
+        item['raw_img_name'] = pic.split('.')[0]
 
 
-            # 非公共区域为0，公共区域为255
-            mask[mask != 2] = 0
-            mask[mask ==2]=255
-            mask_rgb = np.stack([mask] * 3, axis=-1)
+        # 生成mask
+        mask = np.zeros((img_height, img_width), dtype=np.uint8)
+        # 在原图截取区域内+1
+        mask = increment_polygon_area(mask,points)
+        # 在变换图截取区域内+1
+        mask = increment_polygon_area(mask,points_temp)
 
 
-            # # 可视化
-            # dir_visual = 'data/visual'
-            # img_visual = np.zeros((img_height, img_width), dtype=np.uint8)
-            # img_visual = draw_polygon_on_matrix(img_visual,points)
-            # img_visual = draw_polygon_on_matrix(img_visual,points_temp)
-            # img_visual_rgb = np.stack([img_visual] * 3, axis=-1)
-            # # 保存visual图
-            # save_image_with_info(img_visual_rgb, item, folder_path=dir_visual)
+        # 非公共区域为0，公共区域为255
+        mask[mask != 2] = 0
+        mask[mask ==2]=255
+        mask_rgb = np.stack([mask] * 3, axis=-1)
 
-            # mask_原图区域
-            mask_raw = crop_by_points(mask_rgb,points,1920,1080)
-            # 二值化，因为变换后边缘会模糊
-            mask_raw = binarize_rgb_image(mask_raw)
-            # mask_变换图区域
-            mask_transform = crop_by_points(mask_rgb,points_temp,1920, 1080)
-            # 二值化，因为变换后边缘会模糊
-            mask_transform = binarize_rgb_image(mask_transform)
-            # 生成变换图
-            cropped_image = crop_by_points(image,points_temp,1920, 1080)
-            
-            
 
-            # 保存原图
-            save_image_with_info(cropped, item, folder_path=dir_img_raw)
-            # 保存变换图
-            save_image_with_info(cropped_image, item, folder_path=dir_img_transform)
-            # 保存原图mask
-            save_image_with_info(mask_raw, item, folder_path=dir_mask_raw)
-            # 保存变换图mask
-            save_image_with_info(mask_transform, item, folder_path=dir_mask_transform)
+        # # 可视化
+        # dir_visual = 'data/visual'
+        # img_visual = np.zeros((img_height, img_width), dtype=np.uint8)
+        # img_visual = draw_polygon_on_matrix(img_visual,points)
+        # img_visual = draw_polygon_on_matrix(img_visual,points_temp)
+        # img_visual_rgb = np.stack([img_visual] * 3, axis=-1)
+        # # 保存visual图
+        # save_image_with_info(img_visual_rgb, item, folder_path=dir_visual)
+
+        # mask_原图区域
+        mask_raw = crop_by_points(mask_rgb,points,1920,1080)
+        # 二值化，因为变换后边缘会模糊
+        mask_raw = binarize_rgb_image(mask_raw)
+        # mask_变换图区域
+        mask_transform = crop_by_points(mask_rgb,points_temp,1920, 1080)
+        # 二值化，因为变换后边缘会模糊
+        mask_transform = binarize_rgb_image(mask_transform)
+        # 生成变换图
+        cropped_image = crop_by_points(image,points_temp,1920, 1080)
+        # 生成原图
+        cropped = crop_by_points(image,points,1920, 1080)
+        
+        
+
+        # 保存原图
+        save_image_with_info(cropped, item, folder_path=dir_img_raw)
+        # 保存变换图
+        save_image_with_info(cropped_image, item, folder_path=dir_img_transform)
+        # 保存原图mask
+        save_image_with_info(mask_raw, item, folder_path=dir_mask_raw)
+        # 保存变换图mask
+        save_image_with_info(mask_transform, item, folder_path=dir_mask_transform)
    
