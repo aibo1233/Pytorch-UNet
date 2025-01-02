@@ -5,6 +5,27 @@ from PIL import Image
 from matplotlib.path import Path
 import random
 
+def convert_to_single_channel(mask):
+    """
+    将灰度或三通道 mask 转换为单通道。
+    
+    参数:
+    - mask: np.ndarray, 形状为 (H, W, 3) 或 (H, W)
+    
+    返回:
+    - single_channel_mask: np.ndarray, 单通道 mask
+    """
+    if mask.ndim == 3:
+        assert mask.shape[2] == 3, "Expected 3 channels for the input mask"
+        # 如果是 RGB 图像，检查是否所有通道值相同
+        if np.all(mask[:, :, 0] == mask[:, :, 1]) and np.all(mask[:, :, 0] == mask[:, :, 2]):
+            return mask[:, :, 0]  # 使用任意一个通道
+        else:
+            raise ValueError("Mask channels are not identical, cannot directly convert.")
+    elif mask.ndim == 2:
+        return mask  # 已是单通道
+    else:
+        raise ValueError("Invalid mask dimensions.")
 
 def binarize_rgb_image(image, threshold=128):
     """
@@ -405,12 +426,19 @@ if __name__ == "__main__":
         mask_raw = crop_by_points(mask_rgb,points,1920,1080)
         # 二值化，因为变换后边缘会模糊
         mask_raw = binarize_rgb_image(mask_raw)
+        # 转换为单通道（全白的【255，255，255】读取以后在可视化界面显示的是全黑的图片，因此将mask改为单通道测试
+        mask_raw = convert_to_single_channel(mask_raw)
+
         # mask_变换图区域
         mask_transform = crop_by_points(mask_rgb,points_temp,1920, 1080)
         # 二值化，因为变换后边缘会模糊
         mask_transform = binarize_rgb_image(mask_transform)
+        # 转换为单通道
+        mask_transform = convert_to_single_channel(mask_transform)
+
         # 生成变换图
         cropped_image = crop_by_points(image,points_temp,1920, 1080)
+
         # 生成原图
         cropped = crop_by_points(image,points,1920, 1080)
         
