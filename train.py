@@ -85,7 +85,7 @@ def train_model(
                               lr=learning_rate, weight_decay=weight_decay, momentum=momentum, foreach=True)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor([0.8, 0.2]).to(device=device)) if model.n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
 
     # 5. Begin training
@@ -112,6 +112,10 @@ def train_model(
 
                 true_masks = true_masks.to(device=device, dtype=torch.long)
                 true_masks_trans = true_masks_trans.to(device=device, dtype=torch.long)
+
+                # 检查是否全为0
+                assert not torch.all(true_masks[0] == 0) and not torch.all(true_masks_trans[0] == 0),f'The image  is completely black (all pixels are [0, 0, 0]).'
+               
 
 
                 
