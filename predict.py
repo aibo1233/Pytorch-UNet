@@ -13,7 +13,7 @@ from unet import UNet
 from utils.utils import plot_img_and_mask
 
 def predict_img(net,
-                full_img,
+                full_img,full_img_trans,
                 device,
                 scale_factor=1,
                 out_threshold=0.5):
@@ -21,16 +21,26 @@ def predict_img(net,
     img = torch.from_numpy(BasicDataset.preprocess(None, full_img, scale_factor, is_mask=False))
     img = img.unsqueeze(0)
     img = img.to(device=device, dtype=torch.float32)
+    # 变换图
+    img_trans = torch.from_numpy(BasicDataset.preprocess(None, full_img_trans, scale_factor, is_mask=False))
+    img_trans = img_trans.unsqueeze(0)
+    img_trans = img_trans.to(device=device, dtype=torch.float32)
+    # 对图像合并通道
+    images_merge= torch.cat((img, img_trans), dim=1)
 
     with torch.no_grad():
-        output = net(img).cpu()
+        output = net(images_merge).cpu()
         output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
+        print(output.shape)
         if net.n_classes > 1:
-            mask = output.argmax(dim=1)
+            mask_raw = output[:,0:2,:,:].argmax(dim=1)
+            mask_trans = output[:,2:4,:,:].argmax(dim=1)
         else:
             mask = torch.sigmoid(output) > out_threshold
+    
+    # print(mask.shape)
 
-    return mask[0].long().squeeze().numpy()
+    return mask_raw[0].long().squeeze().numpy(),mask_trans[0].long().squeeze().numpy()
 
 
 def get_args():
@@ -83,7 +93,7 @@ if __name__ == '__main__':
     in_files = args.input
     out_files = get_output_filenames(args)
 
-    net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    net = UNet(n_channels=6, n_classes=4, bilinear=args.bilinear)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')
@@ -99,18 +109,24 @@ if __name__ == '__main__':
     for i, filename in enumerate(in_files):
         logging.info(f'Predicting image {filename} ...')
         img = Image.open(filename)
+        img_trans = Image.open(filename.replace('imgs','imgs_transform'))
 
-        mask = predict_img(net=net,
+        mask,mask_trans = predict_img(net=net,
                            full_img=img,
+                           full_img_trans=img_trans,
                            scale_factor=args.scale,
                            out_threshold=args.mask_threshold,
                            device=device)
 
         if not args.no_save:
             out_filename = out_files[i]
+            out_filename_trans = out_filename.replace('output','output_trans')
             result = mask_to_image(mask, mask_values)
             result.save(out_filename)
-            logging.info(f'Mask saved to {out_filename}')
+            # 变换图
+            result_trans = mask_to_image(mask_trans, mask_values)
+            result_trans.save(out_filename_trans)
+            logging.info(f'Mask saved to {out_filename},{out_filename_trans}')
 
         if args.viz:
             logging.info(f'Visualizing results for image {filename}, close to continue...')
