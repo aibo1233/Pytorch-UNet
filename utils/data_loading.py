@@ -61,7 +61,8 @@ class BasicDataset(Dataset):
         #         total=len(self.ids)
         #     ))
         # self.mask_values = list(sorted(np.unique(np.concatenate(unique), axis=0).tolist()))
-        self.mask_values = [[0, 0, 0], [255, 255, 255]]
+        # self.mask_values = [[0, 0, 0], [255, 255, 255]]
+        self.mask_values = [0,255]
 
         logging.info(f'Unique mask values: {self.mask_values}')
 
