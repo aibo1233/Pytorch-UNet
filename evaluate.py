@@ -46,8 +46,13 @@ def evaluate(net, dataloader, device, amp):
                 mask_pred_trans = F.one_hot(mask_pred_trans.argmax(dim=1), 2).permute(0, 3, 1, 2).float()
 
                 # compute the Dice score, ignoring background
-                dice_score += multiclass_dice_coeff(mask_pred_raw[:, 1:], mask_true[:, 1:], reduce_batch_first=False)
-                dice_score += multiclass_dice_coeff(mask_pred_trans[:, 1:], mask_true_trans[:, 1:], reduce_batch_first=False)
+                # dice_score += multiclass_dice_coeff(mask_pred_raw[:, 1:], mask_true[:, 1:], reduce_batch_first=False)
+                # dice_score += multiclass_dice_coeff(mask_pred_trans[:, 1:], mask_true_trans[:, 1:], reduce_batch_first=False)
+                # 前景背景都考虑
+                # compute the Dice score, including background
+                dice_score += multiclass_dice_coeff(mask_pred_raw, mask_true, reduce_batch_first=False)
+                dice_score += multiclass_dice_coeff(mask_pred_trans, mask_true_trans, reduce_batch_first=False)
+
 
     net.train()
     return dice_score / (max(num_val_batches, 1)*2)
