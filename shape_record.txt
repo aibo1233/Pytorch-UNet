@@ -1,0 +1,10 @@
+x.shape
+torch.Size([32, 6, 540, 960])
+x1.shape
+torch.Size([32, 2, 540, 960])
+
+
+x.shape
+torch.Size([32, 6, 540, 960])
+x1.shape
+torch.Size([32, 64, 540, 960])

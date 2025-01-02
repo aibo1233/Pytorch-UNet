@@ -111,6 +111,15 @@ class BasicDataset(Dataset):
         mask_trans = load_image(mask_trans_file[0])
         img_trans = load_image(img_trans_file[0])
 
+
+        # 检查标签是否全为0
+        mask_array = np.array(mask)
+        mask_trans_array = np.array(mask_trans)
+        # if np.all(mask_array == 0) or np.all(mask_trans_array == 0):
+        #     print(f"The image '{name}' is completely black (all pixels are [0, 0, 0]).")
+        assert not np.all(mask_array == 0) and not np.all(mask_trans_array == 0),f'The image {name} is completely black (all pixels are [0, 0, 0]).'
+
+
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
 

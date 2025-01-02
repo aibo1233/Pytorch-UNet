@@ -192,9 +192,14 @@ def train_model(
                                 'learning rate': optimizer.param_groups[0]['lr'],
                                 'validation Dice': val_score,
                                 'images': wandb.Image(images[0].cpu()),
+                                'images_trans': wandb.Image(images_trans[0].cpu()),
                                 'masks': {
                                     'true': wandb.Image(true_masks[0].float().cpu()),
                                     'pred': wandb.Image(mask_pred_raw.argmax(dim=1)[0].float().cpu()),
+                                },
+                                'masks_trans': {
+                                    'true': wandb.Image(true_masks_trans[0].float().cpu()),
+                                    'pred': wandb.Image(mask_pred_trans.argmax(dim=1)[0].float().cpu()),
                                 },
                                 'step': global_step,
                                 'epoch': epoch,

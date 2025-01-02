@@ -27,6 +27,7 @@ def predict_img(net,
     img_trans = img_trans.to(device=device, dtype=torch.float32)
     # 对图像合并通道
     images_merge= torch.cat((img, img_trans), dim=1)
+    print(images_merge.shape)
 
     with torch.no_grad():
         output = net(images_merge).cpu()

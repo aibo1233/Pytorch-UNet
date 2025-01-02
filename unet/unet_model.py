@@ -32,11 +32,16 @@ class UNet(nn.Module):
             CBAM(1024 // factor)  # 添加 CBAM 模块
         )
 
-        self.up1 = (Up(1024, 512 // factor, bilinear))
-        self.up2 = (Up(512, 256 // factor, bilinear))
-        self.up3 = (Up(256, 128 // factor, bilinear))
-        self.up4 = (Up(128, 64, bilinear))
-        self.outc = (OutConv(64, n_classes))
+        self.up1 = Up(1024, 512 // factor, bilinear)
+        self.cbam1 = CBAM(512 // factor)
+        self.up2 = Up(512, 256 // factor, bilinear)
+        self.cbam2 = CBAM(256 // factor)
+        self.up3 = Up(256, 128 // factor, bilinear)
+        self.cbam3 = CBAM(128)
+        self.up4 = Up(128, 64, bilinear)
+        self.cbam4 = CBAM(64)
+
+        self.outc = OutConv(64, n_classes)
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -44,10 +49,16 @@ class UNet(nn.Module):
         x3 = self.down2(x2)
         x4 = self.down3(x3)
         x5 = self.down4(x4)
+
         x = self.up1(x5, x4)
+        x = self.cbam1(x)
         x = self.up2(x, x3)
+        x = self.cbam2(x)
         x = self.up3(x, x2)
+        x = self.cbam3(x)
         x = self.up4(x, x1)
+        x = self.cbam4(x)
+        
         logits = self.outc(x)
         return logits
 
