@@ -269,19 +269,19 @@ def transform_points_with_metadata(points, img_width, img_height):
             })
     
     # 缩放
-    scaling_factors = [1.02, 1.04, 1.06, 1.08, 1.1,1.12,1.14,1.16,1.18,1.2]
-    for factor in scaling_factors:
-        for mode in ["enlarge", "shrink"]:
-            scale = factor if mode == "enlarge" else 1 / factor
-            scaled_points = (points - center) * scale + center
-            overlap_ratio = calculate_overlap_area(points,scaled_points,img_height,img_width)
-            results.append({
-                "type": "scaling",
-                "magnitude": f"{int((factor - 1) * 100):02}%" if mode == "enlarge" else f"{int((1 - 1 / factor) * 100):02}%",
-                "direction": mode,
-                "overlap_ratio":overlap_ratio,
-                "points": [(int(x), int(y)) for x, y in scaled_points]
-            })
+    # scaling_factors = [1.02, 1.04, 1.06, 1.08, 1.1,1.12,1.14,1.16,1.18,1.2]
+    # for factor in scaling_factors:
+    #     for mode in ["enlarge", "shrink"]:
+    #         scale = factor if mode == "enlarge" else 1 / factor
+    #         scaled_points = (points - center) * scale + center
+    #         overlap_ratio = calculate_overlap_area(points,scaled_points,img_height,img_width)
+    #         results.append({
+    #             "type": "scaling",
+    #             "magnitude": f"{int((factor - 1) * 100):02}%" if mode == "enlarge" else f"{int((1 - 1 / factor) * 100):02}%",
+    #             "direction": mode,
+    #             "overlap_ratio":overlap_ratio,
+    #             "points": [(int(x), int(y)) for x, y in scaled_points]
+    #         })
     
     return results
 
