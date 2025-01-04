@@ -2,7 +2,7 @@
 #SBATCH --partition=hygon_dcu        # 指定分区
 #SBATCH --ntasks=1                    # 请求1个任务
 #SBATCH --gres=dcu:1                  # 请求6个GPU
-#SBATCH --cpus-per-task=8           # 请求每个任务48个CPU核
+#SBATCH --cpus-per-task=18           # 请求每个任务48个CPU核
 #SBATCH --nodelist=dcu1              # 指定运行节点为 gpu2
 
 

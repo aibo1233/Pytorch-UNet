@@ -348,36 +348,7 @@ def get_points_of_crop_center(image_h,image_w, crop_width, crop_height):
     
     return points
 
-
-
-# 示例调用
-if __name__ == "__main__":
-    # 检查文件夹是否存在
-    dir_img_raw = 'data/imgs'
-    dir_img_transform = 'data/imgs_transform'
-    dir_mask_raw = 'data/masks'
-    dir_mask_transform = 'data/masks_transform'
-    if not os.path.exists(dir_img_transform):
-        os.mkdir(dir_img_transform)
-    if not os.path.exists(dir_mask_transform):
-        os.mkdir(dir_mask_transform)
-
-
-    
-    # 创建一个示例大图像 (4000x4000)
-    # raw_image_dir = '../AerialImageDataset/train/images'
-    raw_image_dir = 'raw_img'
-    image_h,image_w = 3000,3000
-    # 裁剪中心的 1920x1080 区域
-    points = get_points_of_crop_center(image_h,image_w, 1920, 1080)
-    
-
-    # 对四个点进行变换
-    transformed_results = transform_points_with_metadata(points, image_w, image_h)
-    # print(transformed_results)
-
-
-    # raw_image_dir = 'raw_img'
+def create_dataset_in_dir(raw_image_dir,points,transformed_results):
     for pic in os.listdir(raw_image_dir):
         print(pic)
         pic_path = os.path.join(raw_image_dir,pic)
@@ -452,4 +423,42 @@ if __name__ == "__main__":
         save_image_with_info(mask_raw, item, folder_path=dir_mask_raw)
         # 保存变换图mask
         save_image_with_info(mask_transform, item, folder_path=dir_mask_transform)
+
+
+# 示例调用
+if __name__ == "__main__":
+    # 检查文件夹是否存在
+    dir_img_raw = 'data/imgs'
+    dir_img_transform = 'data/imgs_transform'
+    dir_mask_raw = 'data/masks'
+    dir_mask_transform = 'data/masks_transform'
+    if not os.path.exists(dir_img_raw):
+        os.mkdir(dir_img_raw)
+    if not os.path.exists(dir_mask_raw):
+        os.mkdir(dir_mask_raw)
+    if not os.path.exists(dir_img_transform):
+        os.mkdir(dir_img_transform)
+    if not os.path.exists(dir_mask_transform):
+        os.mkdir(dir_mask_transform)
+
+
+    
+    # 创建一个示例大图像 (4000x4000)
+    # raw_image_dir = '../AerialImageDataset/train/images'
+    raw_image_dir_1 = 'raw_img'
+    raw_image_dir_2 = 'raw_img_whu_dataset_check'
+    image_h,image_w = 3000,3000
+    # 裁剪中心的 1920x1080 区域
+    points = get_points_of_crop_center(image_h,image_w, 1920, 1080)
+    
+
+    # 对四个点进行变换
+    transformed_results = transform_points_with_metadata(points, image_w, image_h)
+    # print(transformed_results)
+
+
+    # raw_image_dir = 'raw_img'
+    create_dataset_in_dir(raw_image_dir_1,points,transformed_results)
+    create_dataset_in_dir(raw_image_dir_2,points,transformed_results)
+    
    
