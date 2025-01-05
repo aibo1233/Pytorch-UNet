@@ -107,10 +107,29 @@ class BasicDataset(Dataset):
 
         assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
         assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
-        mask = load_image(mask_file[0])
-        img = load_image(img_file[0])
-        mask_trans = load_image(mask_trans_file[0])
-        img_trans = load_image(img_trans_file[0])
+
+        # 验证file not find是否真的是文件不存在
+        # mask = load_image(mask_file[0])
+        # img = load_image(img_file[0])
+        # mask_trans = load_image(mask_trans_file[0])
+        # img_trans = load_image(img_trans_file[0])
+        try:
+            mask = load_image(mask_file[0])
+        except Exception as e:
+             print(f"[Error] Failed to load image {mask_file[0]}. Exception: {e}")
+        try:
+            img = load_image(img_file[0])
+        except Exception as e:
+             print(f"[Error] Failed to load image {img_file[0]}. Exception: {e}")
+        try:
+            mask_trans = load_image(mask_trans_file[0])
+        except Exception as e:
+             print(f"[Error] Failed to load image {mask_trans_file[0]}. Exception: {e}")
+        try:
+            img_trans = load_image(img_trans_file[0])
+        except Exception as e:
+             print(f"[Error] Failed to load image {img_trans_file[0]}. Exception: {e}")
+
 
 
         # 检查标签是否全为0
