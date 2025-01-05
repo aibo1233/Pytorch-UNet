@@ -116,19 +116,19 @@ class BasicDataset(Dataset):
         try:
             mask = load_image(mask_file[0])
         except Exception as e:
-             print(f"[Error] Failed to load image {mask_file[0]}. Exception: {e}")
+             logging.info(f"[Error] Failed to load image {mask_file[0]}. Exception: {e}")
         try:
             img = load_image(img_file[0])
         except Exception as e:
-             print(f"[Error] Failed to load image {img_file[0]}. Exception: {e}")
+             logging.info(f"[Error] Failed to load image {img_file[0]}. Exception: {e}")
         try:
             mask_trans = load_image(mask_trans_file[0])
         except Exception as e:
-             print(f"[Error] Failed to load image {mask_trans_file[0]}. Exception: {e}")
+             logging.info(f"[Error] Failed to load image {mask_trans_file[0]}. Exception: {e}")
         try:
             img_trans = load_image(img_trans_file[0])
         except Exception as e:
-             print(f"[Error] Failed to load image {img_trans_file[0]}. Exception: {e}")
+             logging.info(f"[Error] Failed to load image {img_trans_file[0]}. Exception: {e}")
 
 
 
